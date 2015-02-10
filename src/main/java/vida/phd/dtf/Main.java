@@ -1,8 +1,12 @@
 package vida.phd.dtf;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.text.DateFormat;
+import java.text.DecimalFormat;
 import java.text.MessageFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
@@ -10,23 +14,42 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import vida.phd.dtf.commandline.CommandLine;
 import vida.phd.dtf.entity.BasicBlock;
 import vida.phd.dtf.entity.Family;
+import vida.phd.dtf.entity.Malware;
 
 public class Main {
 
-  private static final String version = "1.2.5";
+  private static final String version = "2.1.3";
   private CommandLine getter;
   private boolean running;
   private DTF dtf;
+  private File initFile;
 
   private void run() {
     showVersion();
     running = true;
+    dtf = new DTF();
+    dtf.showStatus(false);
+
+    if (checkInitFile()) {
+      System.out.println("Init file found!");
+      String initLoadPath = checkInitLoad();
+      if (initLoadPath != null) {
+        System.out.println("Init load from: " + initLoadPath);
+        try {
+          loadFamiles(initLoadPath);
+        } catch (IOException ex) {
+          Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }
+      }
+    }
+
     getter = new CommandLine(System.in, System.out, ";", "DTF> ", "-> ");
     while (running) {
       try {
@@ -41,6 +64,8 @@ public class Main {
               timeCommand(command);
             } else if (command.equalsIgnoreCase("help")) {
               showHelp();
+            } else if (command.equalsIgnoreCase("status")) {
+              statusCommand();
             } else if (command.equalsIgnoreCase("families")) {
               familiesCommand();
             } else if (command.startsWith("query")) {
@@ -85,7 +110,30 @@ public class Main {
       showQueryHelp();
     } else {
       String[] parts = splitCommand(command);
-      if (parts.length == 4 && parts[1].equals("top")) {
+      if (parts.length == 3 && parts[1].equals("tfd")) {
+        try {
+          String familyName = parts[2];
+          if (dtf != null) {
+            try {
+              List<BasicBlock> bbs = dtf.topByFamily(familyName);
+
+              int i = 1;
+              for (BasicBlock bb : bbs) {
+                DecimalFormat df = new DecimalFormat("###,###.############");
+                System.out.println(df.format(bb.getDistributionTermFrequency()));
+              }
+            } catch (Exception ex) {
+              Logger.getLogger(Main.class.getName()).log(Level.SEVERE, ex.getMessage());
+            }
+          } else {
+            System.out.println("Please load the families first.");
+          }
+
+        } catch (Exception ex) {
+          System.out.println("Error: " + ex.getMessage());
+          showQueryHelp();
+        }
+      } else if (parts.length == 4 && parts[1].equals("top")) {
         try {
           int top = Integer.parseInt(parts[2]);
           String familyName = parts[3];
@@ -95,8 +143,6 @@ public class Main {
 
               int i = 1;
               for (BasicBlock bb : bbs) {
-                //System.out.println(MessageFormat.format("{0}.\t{1} Malware: {2}, TFR: {3}, DTF: {4}",
-                //        String.valueOf(i++), bb.getCode(), bb.getMalwareName(), bb.getTermFrequencyRatio(), bb.getDistributionTermFrequency()));
                 System.out.println(MessageFormat.format("{0}. {1}", String.valueOf(i++), bb));
               }
             } catch (Exception ex) {
@@ -120,8 +166,6 @@ public class Main {
 
               int i = 1;
               for (BasicBlock bb : bbs) {
-               // System.out.println(MessageFormat.format("{0}.\t{1} Malware: {2}, TFR: {3}, DTF: {4}",
-                //       String.valueOf(i++), bb.getCode(), bb.getMalwareName(), bb.getTermFrequencyRatio(), bb.getDistributionTermFrequency()));
                 System.out.println(MessageFormat.format("{0}. {1}", String.valueOf(i++), bb));
 
                 List<Family> commonFamilies = dtf.findFamiliesByBB(bb.getCode());
@@ -153,6 +197,77 @@ public class Main {
           System.out.println("Top should be an integer.");
           showQueryHelp();
         }
+      } else if (parts.length == 3 && parts[1].equals("bb")) {
+        String hash = parts[2].trim();
+        System.out.println("Query basic block " + hash);
+        //List<Family> families = dtf.findFamiliesByBB(hash);
+        List<DTF.FamilyBasicBlock> occurances = dtf.allOccurancesByHash(hash);
+
+        DecimalFormat df = new DecimalFormat("###,###.############");
+        System.out.println(occurances.size() + " families: ");
+        for (DTF.FamilyBasicBlock occurance : occurances) {
+          System.out.print(occurance.getFamily().getName());
+          System.out.println(": DTF:"
+                  + df.format(occurance.getBasicBlock().getDistributionTermFrequency()) + ", TFR:"
+                  + df.format(occurance.getBasicBlock().getTermFrequencyRatio()) + ", Count:"
+                  + occurance.getBasicBlock().getCount());
+        }
+
+        Set<Malware> malwares = dtf.findMalwaresByBBCode(hash);
+        Iterator<Malware> itM = malwares.iterator();
+        System.out.println(malwares.size() + " malwares: ");
+        while (itM.hasNext()) {
+          Malware malware = itM.next();
+          System.out.println(malware);
+        }
+      } else if (parts.length == 3 && parts[1].equals("malware")) {
+        String malwareName = parts[2].trim();
+
+        Iterator<Map.Entry<String, Family>> itF = dtf.getFamilies().entrySet().iterator();
+        while (itF.hasNext()) {
+          Map.Entry<String, Family> nextF = itF.next();
+          Family family = nextF.getValue();
+
+          Iterator<Map.Entry<String, Malware>> itM = family.getMalwares().entrySet().iterator();
+          while (itM.hasNext()) {
+            Map.Entry<String, Malware> nextM = itM.next();
+            Malware malware = nextM.getValue();
+
+            if (malware.getName().equals(malwareName)) {
+              System.out.println(malware);
+
+              int countOfBBs = 0;
+
+              HashMap<String, BasicBlock> basicBlocks = malware.getBasicBlocks();
+              Iterator<Map.Entry<String, BasicBlock>> itB = basicBlocks.entrySet().iterator();
+              while (itB.hasNext()) {
+                Map.Entry<String, BasicBlock> nextB = itB.next();
+                BasicBlock bbM = nextB.getValue();
+                System.out.println(bbM.getCode());
+                
+                DecimalFormat df = new DecimalFormat("###,###.############");
+                List<DTF.FamilyBasicBlock> occurances = dtf.allOccurancesByHash(bbM.getCode());
+                System.out.println("Families: ");
+                for (DTF.FamilyBasicBlock occurance : occurances) {
+                  System.out.print(occurance.getFamily().getName());
+                  System.out.println(": DTF:"
+                          + df.format(occurance.getBasicBlock().getDistributionTermFrequency()) + ", TFR:"
+                          + df.format(occurance.getBasicBlock().getTermFrequencyRatio()) + ", Count:"
+                          + occurance.getBasicBlock().getCount());
+                }
+
+                System.out.println("\n ---------------------------");
+                countOfBBs += bbM.getCount();
+              }
+
+              System.out.println("\nCount of basic blocks: " + countOfBBs);
+              System.out.println("Count of distinguished basic blocks: " + malware.getBasicBlocks().size());
+
+              break;
+            }
+          }
+        }
+
       } else {
         showQueryHelp();
       }
@@ -167,7 +282,10 @@ public class Main {
     System.out.println("Query command is not valid!");
     System.out.println("e.g.");
     System.out.println("query top 10");
-    System.out.println("query top 40 in Dropper");
+    System.out.println("query top 40 Dropper");
+    System.out.println("query sort Dropper");
+    System.out.println("query bb 636ceb71b4eb15e8170c1ac8d2b7a9ecf8fcc7d4");
+    System.out.println("query malware c9c6f8f844c82a45624dfedc6e76144e.txt");
   }
 
   private void showLoadHelp() {
@@ -192,7 +310,7 @@ public class Main {
 
   private void loadFamiles(String path) throws IOException {
     File file = new File(path);
-    dtf = new DTF(file);
+    dtf.setFamiliesHome(file);
     dtf.loadFamilies();
     dtf.calculateTermFrequencyRatio();
     dtf.calculateDistributionTermFrequency();
@@ -214,7 +332,6 @@ public class Main {
 
         while (it2.hasNext()) {
           BasicBlock basicBlock = it2.next().getValue();
-          //System.out.println(basicBlock);
         }
       }
 
@@ -260,6 +377,50 @@ public class Main {
   public static void main(String[] args) {
     Main main = new Main();
     main.run();
+  }
+
+  private void statusCommand() {
+    dtf.showStatus(false);
+  }
+
+  private boolean checkInitFile() {
+    try {
+      String path = getJarFilePath();
+      path += "init";
+      initFile = new File(path);
+      return initFile.exists() && initFile.isFile();
+    } catch (URISyntaxException ex) {
+      Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+    }
+
+    return false;
+  }
+
+  private String checkInitLoad() {
+    Properties initProperties = new Properties();
+    try {
+      initProperties.load(new FileInputStream(initFile));
+      String result = initProperties.getProperty("load");
+      return result;
+    } catch (FileNotFoundException ex) {
+      Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+    } catch (IOException ex) {
+      Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+    }
+
+    return null;
+  }
+
+  private String getJarFilePath() throws URISyntaxException {
+    String jarFilePath = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getAbsolutePath();
+     jarFilePath = jarFilePath.substring(0, jarFilePath.lastIndexOf(getFileSeparator()) + 1);
+     return jarFilePath.replaceAll("%20", "\\ ");
+  }
+  
+  public static String getFileSeparator() {
+    Properties sysProperties = System.getProperties();
+    String fileSeparator = sysProperties.getProperty("file.separator");
+    return fileSeparator;
   }
 
 }

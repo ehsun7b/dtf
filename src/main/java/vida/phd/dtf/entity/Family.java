@@ -7,9 +7,9 @@ import java.util.Objects;
 
 public class Family {
 
-  private String name;
-  private HashMap<String, BasicBlock> basicBlocks;
-  private final HashMap<String, String> malwares;
+  private final String name;
+  private final HashMap<String, BasicBlock> basicBlocks;
+  private final HashMap<String, Malware> malwares;
 
   public Family(String name) {
     basicBlocks = new HashMap<>();
@@ -40,16 +40,8 @@ public class Family {
     return name;
   }
 
-  public void setName(String name) {
-    this.name = name;
-  }
-
   public HashMap<String, BasicBlock> getBasicBlocks() {
     return basicBlocks;
-  }
-
-  public void setBasicBlocks(HashMap<String, BasicBlock> basicBlocks) {
-    this.basicBlocks = basicBlocks;
   }
 
   public BasicBlock findByCode(String code) {
@@ -78,8 +70,26 @@ public class Family {
     return true;
   }
 
-  public HashMap<String, String> getMalwares() {
+  public void addBasicBlock(String code) throws Exception {
+    BasicBlock existingBB = basicBlocks.get(code);
+    if (existingBB != null) {
+      existingBB.incCound();
+    } else {
+      basicBlocks.put(code, new BasicBlock(code));
+    }
+  }
+  
+  public void addMalware(Malware malware) throws Exception {
+    if (malwares.containsKey(malware.getName())) {
+      throw new Exception("Malware " + malware.getName() + " already exists.");
+    }
+    
+    malwares.put(malware.getName(), malware);
+  }
+
+  public HashMap<String, Malware> getMalwares() {
     return malwares;
   }
 
+  
 }

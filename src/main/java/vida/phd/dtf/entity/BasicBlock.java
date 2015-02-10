@@ -5,41 +5,30 @@ import java.util.Objects;
 
 public class BasicBlock implements Comparable<BasicBlock> {
 
-  private String code;
-  private String malwareName;
-
+  private final String code;
   private int count;
   private double termFrequencyRatio;
   private double distributionTermFrequency;
 
-  public BasicBlock(String code, String malwareName) {
-    this.code = code;
-    this.malwareName = malwareName;
-    this.count = 1;
+  public BasicBlock(String code) throws Exception {
+    if (code != null && code.trim().length() > 0) {
+      this.code = code;
+      this.count = 1;
+    } else {
+      throw new Exception("Code of BB is null or empty!");
+    }
   }
 
   public String getCode() {
     return code;
   }
 
-  public void setCode(String code) {
-    this.code = code;
-  }
-
-  public String getMalwareName() {
-    return malwareName;
-  }
-
-  public void setMalwareName(String malwareName) {
-    this.malwareName = malwareName;
-  }
-
   public int getCount() {
     return count;
   }
-
-  public void setCount(int count) {
-    this.count = count;
+  
+  public void incCound() {
+    this.count++;
   }
 
   public double getTermFrequencyRatio() {
@@ -82,7 +71,8 @@ public class BasicBlock implements Comparable<BasicBlock> {
   @Override
   public String toString() {
     DecimalFormat df = new DecimalFormat("###,###.############");
-    return "BasicBlock{" + "Hash=" + code + ", malware: " + malwareName + ", count: " + count + ", TFR: " + df.format(termFrequencyRatio) + ", TFD: " + df.format(distributionTermFrequency) + '}';
+
+    return "BasicBlock{" + "Hash=" + code + ", count: " + count + ", TFR: " + df.format(termFrequencyRatio) + ", TFD: " + df.format(distributionTermFrequency) + "}";
   }
 
   @Override
