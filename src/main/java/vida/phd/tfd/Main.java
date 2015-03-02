@@ -1,4 +1,4 @@
-package vida.phd.dtf;
+package vida.phd.tfd;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,23 +18,23 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import vida.phd.dtf.commandline.CommandLine;
-import vida.phd.dtf.entity.BasicBlock;
-import vida.phd.dtf.entity.Family;
-import vida.phd.dtf.entity.Malware;
+import vida.phd.tfd.commandline.CommandLine;
+import vida.phd.tfd.entity.BasicBlock;
+import vida.phd.tfd.entity.Family;
+import vida.phd.tfd.entity.Malware;
 
 public class Main {
 
-  private static final String version = "2.1.3";
+  private static final String version = "2.2.3";
   private CommandLine getter;
   private boolean running;
-  private DTF dtf;
+  private TFD dtf;
   private File initFile;
 
   private void run() {
     showVersion();
     running = true;
-    dtf = new DTF();
+    dtf = new TFD();
     dtf.showStatus(false);
 
     if (checkInitFile()) {
@@ -50,7 +50,7 @@ public class Main {
       }
     }
 
-    getter = new CommandLine(System.in, System.out, ";", "DTF> ", "-> ");
+    getter = new CommandLine(System.in, System.out, ";", "TFD> ", "-> ");
     while (running) {
       try {
         List<String> commands = getter.read();
@@ -200,17 +200,17 @@ public class Main {
       } else if (parts.length == 3 && parts[1].equals("bb")) {
         String hash = parts[2].trim();
         System.out.println("Query basic block " + hash);
-        //List<Family> families = dtf.findFamiliesByBB(hash);
-        List<DTF.FamilyBasicBlock> occurances = dtf.allOccurancesByHash(hash);
+        List<TFD.FamilyBasicBlock> occurances = dtf.allOccurancesByHash(hash);
 
         DecimalFormat df = new DecimalFormat("###,###.############");
         System.out.println(occurances.size() + " families: ");
-        for (DTF.FamilyBasicBlock occurance : occurances) {
+        for (TFD.FamilyBasicBlock occurance : occurances) {
           System.out.print(occurance.getFamily().getName());
           System.out.println(": DTF:"
                   + df.format(occurance.getBasicBlock().getDistributionTermFrequency()) + ", TFR:"
                   + df.format(occurance.getBasicBlock().getTermFrequencyRatio()) + ", Count:"
-                  + occurance.getBasicBlock().getCount());
+                  + occurance.getBasicBlock().getCount() + ", Malwares Count:"
+                  + dtf.countOfMalwaresInFamilyByBB(occurance.getFamily(), hash));
         }
 
         Set<Malware> malwares = dtf.findMalwaresByBBCode(hash);
@@ -246,14 +246,15 @@ public class Main {
                 System.out.println(bbM.getCode());
                 
                 DecimalFormat df = new DecimalFormat("###,###.############");
-                List<DTF.FamilyBasicBlock> occurances = dtf.allOccurancesByHash(bbM.getCode());
+                List<TFD.FamilyBasicBlock> occurances = dtf.allOccurancesByHash(bbM.getCode());
                 System.out.println("Families: ");
-                for (DTF.FamilyBasicBlock occurance : occurances) {
+                for (TFD.FamilyBasicBlock occurance : occurances) {
                   System.out.print(occurance.getFamily().getName());
                   System.out.println(": DTF:"
                           + df.format(occurance.getBasicBlock().getDistributionTermFrequency()) + ", TFR:"
                           + df.format(occurance.getBasicBlock().getTermFrequencyRatio()) + ", Count:"
-                          + occurance.getBasicBlock().getCount());
+                          + occurance.getBasicBlock().getCount() + ", Malwares Count: "
+                          + dtf.countOfMalwaresInFamilyByBB(occurance.getFamily(), occurance.getBasicBlock().getCode()));
                 }
 
                 System.out.println("\n ---------------------------");
@@ -320,22 +321,14 @@ public class Main {
     if (dtf != null) {
       HashMap<String, Family> families = dtf.getFamilies();
       Iterator<Map.Entry<String, Family>> it = families.entrySet().iterator();
-      int countOfFamilies = families.size();
-      int countOfBasicBlocks = 0;
 
       while (it.hasNext()) {
         Family family = it.next().getValue();
         Set<Map.Entry<String, BasicBlock>> basicBlocks = family.getBasicBlocks().entrySet();
-        countOfBasicBlocks += family.countOfBasicBlocks();
 
-        Iterator<Map.Entry<String, BasicBlock>> it2 = basicBlocks.iterator();
-
-        while (it2.hasNext()) {
-          BasicBlock basicBlock = it2.next().getValue();
-        }
+        System.out.println(family.getName() + " malwares: " + family.getMalwares().size());
       }
 
-      System.out.println("\n Families: " + countOfFamilies + " BasicBlocks: " + countOfBasicBlocks);
     } else {
       System.out.println("Please load the families first.");
     }

@@ -1,4 +1,4 @@
-package vida.phd.dtf.io;
+package vida.phd.tfd.io;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -8,9 +8,8 @@ import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import vida.phd.dtf.entity.BasicBlock;
-import vida.phd.dtf.entity.Family;
-import vida.phd.dtf.entity.Malware;
+import vida.phd.tfd.entity.Family;
+import vida.phd.tfd.entity.Malware;
 
 public class Loader implements Callable<Family> {
 
@@ -39,7 +38,6 @@ public class Loader implements Callable<Family> {
       for (File file : files) {
         String malwareName = file.getName();        
         
-
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
           Malware malware = new Malware(malwareName, family);
           

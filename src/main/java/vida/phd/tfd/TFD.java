@@ -1,4 +1,4 @@
-package vida.phd.dtf;
+package vida.phd.tfd;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -19,26 +19,26 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import vida.phd.dtf.entity.BasicBlock;
-import vida.phd.dtf.entity.Family;
-import vida.phd.dtf.entity.Malware;
-import vida.phd.dtf.io.Loader;
+import vida.phd.tfd.entity.BasicBlock;
+import vida.phd.tfd.entity.Family;
+import vida.phd.tfd.entity.Malware;
+import vida.phd.tfd.io.Loader;
 
-public class DTF {
+public class TFD {
 
   private File familiesHome;
   private volatile HashMap<String, Family> families;
   private static final int THREADS = 10;
 
-  public DTF(File familiesHome) {
+  public TFD(File familiesHome) {
     this.familiesHome = familiesHome;
     families = new HashMap<>();
   }
 
-  DTF() {
+  TFD() {
     families = new HashMap<>();
   }
-  
+
   public void loadFamilies() throws IOException {
     int countOfBB = 0;
     int countOfMalwares = 0;
@@ -78,7 +78,7 @@ public class DTF {
             countOfMalwares += family.getMalwares().size();
           }
         } catch (InterruptedException | ExecutionException ex) {
-          Logger.getLogger(DTF.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+          Logger.getLogger(TFD.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
         }
       }
     } else {
@@ -283,7 +283,7 @@ public class DTF {
 
   public void showStatus(boolean details) {
     int countOfBBs = 0;
-    int countOfMalwares = 0;    
+    int countOfMalwares = 0;
     int countOfDistBBs = 0;
 
     Iterator<Map.Entry<String, Family>> it = families.entrySet().iterator();
@@ -310,27 +310,27 @@ public class DTF {
     System.out.println("Total count of distinguished basic blocks: " + countOfDistBBs);
     System.out.println("");
   }
-  
+
   public Set<Malware> findMalwaresByBBCode(final String code) {
     Set<Malware> malwares = new HashSet<>();
-    
+
     Iterator<Map.Entry<String, Family>> it = families.entrySet().iterator();
-    
+
     while (it.hasNext()) {
       Map.Entry<String, Family> nextF = it.next();
       Family family = nextF.getValue();
-      
+
       Iterator<Map.Entry<String, Malware>> itM = family.getMalwares().entrySet().iterator();
       while (itM.hasNext()) {
         Map.Entry<String, Malware> nextM = itM.next();
         Malware malware = nextM.getValue();
-        
+
         if (malware.getBasicBlocks().containsKey(code)) {
           malwares.add(malware);
         }
       }
     }
-    
+
     return malwares;
   }
 
@@ -353,26 +353,46 @@ public class DTF {
 
     return result;
   }
-  
+
   public List<FamilyBasicBlock> allOccurancesByHash(String code) {
     List<FamilyBasicBlock> result = new ArrayList<>();
-    
+
     List<Family> families = findFamiliesByBB(code);
-    
+
     for (Family family : families) {
       BasicBlock bb = family.getBasicBlocks().get(code);
       if (bb != null) {
         result.add(new FamilyBasicBlock(family, bb));
       }
     }
-    
+
     Collections.sort(result);
     Collections.reverse(result);
-    
+
     return result;
   }
-  
+
+  public int countOfMalwaresInFamilyByBB(Family family, String code) {
+    Iterator<Map.Entry<String, Malware>> it = family.getMalwares().entrySet().iterator();
+    int result = 0;
+
+    while (it.hasNext()) {
+      Malware malware = it.next().getValue();
+      Iterator<Map.Entry<String, BasicBlock>> it2 = malware.getBasicBlocks().entrySet().iterator();
+
+      while (it2.hasNext()) {
+        BasicBlock bb = it2.next().getValue();
+        if (bb.getCode().equals(code)) {
+          result++;
+        }
+      }
+    }
+
+    return result;
+  }
+
   public class FamilyBasicBlock implements Comparable<FamilyBasicBlock> {
+
     private Family family;
     private BasicBlock basicBlock;
 
@@ -401,7 +421,5 @@ public class DTF {
     public int compareTo(FamilyBasicBlock o) {
       return basicBlock.compareTo(o.basicBlock);
     }
-    
-    
   }
 }

@@ -1,4 +1,4 @@
-package vida.phd.dtf.entity;
+package vida.phd.tfd.entity;
 
 import java.text.DecimalFormat;
 import java.util.Objects;
