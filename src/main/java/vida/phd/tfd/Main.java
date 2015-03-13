@@ -25,7 +25,7 @@ import vida.phd.tfd.entity.Malware;
 
 public class Main {
 
-  private static final String version = "2.2.3";
+  private static final String version = "2.2.4";
   private CommandLine getter;
   private boolean running;
   private TFD dtf;
@@ -88,7 +88,7 @@ public class Main {
   }
 
   private void showVersion() {
-    System.out.println("DTF ".concat(version).concat("\n"));
+    System.out.println("TFD ".concat(version).concat("\n"));
   }
 
   private void timeCommand(String command) {
@@ -206,7 +206,7 @@ public class Main {
         System.out.println(occurances.size() + " families: ");
         for (TFD.FamilyBasicBlock occurance : occurances) {
           System.out.print(occurance.getFamily().getName());
-          System.out.println(": DTF:"
+          System.out.println(": TFD:"
                   + df.format(occurance.getBasicBlock().getDistributionTermFrequency()) + ", TFR:"
                   + df.format(occurance.getBasicBlock().getTermFrequencyRatio()) + ", Count:"
                   + occurance.getBasicBlock().getCount() + ", Malwares Count:"
@@ -250,7 +250,7 @@ public class Main {
                 System.out.println("Families: ");
                 for (TFD.FamilyBasicBlock occurance : occurances) {
                   System.out.print(occurance.getFamily().getName());
-                  System.out.println(": DTF:"
+                  System.out.println(": TFD:"
                           + df.format(occurance.getBasicBlock().getDistributionTermFrequency()) + ", TFR:"
                           + df.format(occurance.getBasicBlock().getTermFrequencyRatio()) + ", Count:"
                           + occurance.getBasicBlock().getCount() + ", Malwares Count: "
