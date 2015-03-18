@@ -1,15 +1,12 @@
 package vida.phd.tfd.io;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
+import vida.phd.tfd.entity.Family;
+import vida.phd.tfd.entity.Malware;
+
+import java.io.*;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import vida.phd.tfd.entity.Family;
-import vida.phd.tfd.entity.Malware;
 
 public class Loader implements Callable<Family> {
 
@@ -67,5 +64,29 @@ public class Loader implements Callable<Family> {
 
   public String getFamilyName() {
     return familyName;
-  }  
+  }
+
+  public static Malware loadMalware(String path) {
+    Malware malware = null;
+
+    File file = new File(path);
+    String malwareName = file.getName();
+
+    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+      malware = new Malware(malwareName, null);
+
+      String code;
+
+      while ((code = reader.readLine()) != null) {
+        code = code.trim();
+        if (code.length() > 0) {
+          malware.addBasicBlock(code);
+        }
+      }
+    } catch (Exception ex) {
+      Logger.getLogger(Loader.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+    }
+
+    return malware;
+  }
 }

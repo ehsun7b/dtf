@@ -10,6 +10,9 @@ public class BasicBlock implements Comparable<BasicBlock> {
   private double termFrequencyRatio;
   private double distributionTermFrequency;
 
+  private double MDF;
+  private double FC;
+
   public BasicBlock(String code) throws Exception {
     if (code != null && code.trim().length() > 0) {
       this.code = code;
@@ -86,4 +89,19 @@ public class BasicBlock implements Comparable<BasicBlock> {
     }
   }
 
+  public double getMDF() {
+    return MDF;
+  }
+
+  public void setMDF(double MDF) {
+    this.MDF = MDF;
+  }
+
+  public double getFC() {
+    return FC;
+  }
+
+  public void setFC(double FC) {
+    this.FC = FC;
+  }
 }

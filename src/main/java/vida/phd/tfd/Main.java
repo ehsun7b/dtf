@@ -1,5 +1,12 @@
 package vida.phd.tfd;
 
+import vida.phd.tfd.classify.Classify;
+import vida.phd.tfd.commandline.CommandLine;
+import vida.phd.tfd.entity.BasicBlock;
+import vida.phd.tfd.entity.Family;
+import vida.phd.tfd.entity.Malware;
+import vida.phd.tfd.io.Loader;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -8,24 +15,13 @@ import java.net.URISyntaxException;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.MessageFormat;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import vida.phd.tfd.commandline.CommandLine;
-import vida.phd.tfd.entity.BasicBlock;
-import vida.phd.tfd.entity.Family;
-import vida.phd.tfd.entity.Malware;
 
 public class Main {
 
-  private static final String version = "2.2.4";
+  private static final String version = "2.2.7";
   private CommandLine getter;
   private boolean running;
   private TFD dtf;
@@ -74,6 +70,8 @@ public class Main {
               familyCommand(command);
             } else if (command.startsWith("load")) {
               loadCommand(command);
+            } else if (command.startsWith("add")) {
+              addCommand(command);
             } else {
               System.out.println("Unknown Command!");
               System.out.println("");
@@ -85,6 +83,35 @@ public class Main {
         System.out.println("Error: " + e.getMessage());
       }
     }
+  }
+
+  private void addCommand(String command) {
+    if (command.equals("add")) {
+      showAddHelp();
+    } else {
+      String[] parts = splitCommand(command);
+      if (parts.length == 2) {
+        try {
+          String malwareFilePath = parts[1];
+
+          Malware malware = Loader.loadMalware(malwareFilePath);
+          Classify classify = new Classify(dtf.getFamiliesHome(), malware);
+          classify.init();
+          classify.score();
+          classify.findResultFamily();
+          classify.showScores();
+          Family resultFamily = classify.getResultFamily();
+          System.out.println("malware belongs to family: " + resultFamily.getName());
+        } catch (Exception ex) {
+          System.out.println("Error: " + ex.getMessage());
+          showAddHelp();
+        }
+      }
+    }
+  }
+
+  private void showAddHelp() {
+    System.out.println("add help");
   }
 
   private void showVersion() {

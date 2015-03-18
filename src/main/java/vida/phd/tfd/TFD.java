@@ -1,41 +1,34 @@
 package vida.phd.tfd;
 
+import vida.phd.tfd.entity.BasicBlock;
+import vida.phd.tfd.entity.Family;
+import vida.phd.tfd.entity.Malware;
+import vida.phd.tfd.io.Loader;
+
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import vida.phd.tfd.entity.BasicBlock;
-import vida.phd.tfd.entity.Family;
-import vida.phd.tfd.entity.Malware;
-import vida.phd.tfd.io.Loader;
 
 public class TFD {
 
-  private File familiesHome;
-  private volatile HashMap<String, Family> families;
-  private static final int THREADS = 10;
+  protected File familiesHome;
+  protected volatile HashMap<String, Family> families;
+  protected static final int THREADS = 10;
 
   public TFD(File familiesHome) {
     this.familiesHome = familiesHome;
     families = new HashMap<>();
   }
 
-  TFD() {
+  public TFD() {
     families = new HashMap<>();
   }
 
@@ -367,6 +360,36 @@ public class TFD {
     }
 
     Collections.sort(result);
+    Collections.reverse(result);
+
+    return result;
+  }
+
+  public List<FamilyBasicBlock> allOccurancesByHashSortByFC(String code) {
+    List<FamilyBasicBlock> result = new ArrayList<>();
+
+    List<Family> families = findFamiliesByBB(code);
+
+    for (Family family : families) {
+      BasicBlock bb = family.getBasicBlocks().get(code);
+      if (bb != null) {
+        result.add(new FamilyBasicBlock(family, bb));
+      }
+    }
+
+    Collections.sort(result, new Comparator<FamilyBasicBlock>() {
+      @Override
+      public int compare(FamilyBasicBlock o1, FamilyBasicBlock o2) {
+        if (o1.getBasicBlock().getFC() > o2.getBasicBlock().getFC()) {
+          return 1;
+        } else if (o1.getBasicBlock().getFC() < o2.getBasicBlock().getFC()) {
+          return 0;
+        } else {
+          return -1;
+        }
+      }
+    });
+
     Collections.reverse(result);
 
     return result;
