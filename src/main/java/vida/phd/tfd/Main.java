@@ -1,11 +1,9 @@
 package vida.phd.tfd;
 
-import vida.phd.tfd.classify.Classify;
 import vida.phd.tfd.commandline.CommandLine;
 import vida.phd.tfd.entity.BasicBlock;
 import vida.phd.tfd.entity.Family;
 import vida.phd.tfd.entity.Malware;
-import vida.phd.tfd.io.Loader;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,17 +19,17 @@ import java.util.logging.Logger;
 
 public class Main {
 
-  private static final String version = "2.2.7";
+  private static final String version = "3.2.0";
   private CommandLine getter;
   private boolean running;
-  private TFD dtf;
+  private TFD tfd;
   private File initFile;
 
   private void run() {
     showVersion();
     running = true;
-    dtf = new TFD();
-    dtf.showStatus(false);
+    tfd = new TFD();
+    tfd.showStatus(false);
 
     if (checkInitFile()) {
       System.out.println("Init file found!");
@@ -90,18 +88,17 @@ public class Main {
       showAddHelp();
     } else {
       String[] parts = splitCommand(command);
-      if (parts.length == 2) {
+      if (parts.length == 3) {
         try {
-          String malwareFilePath = parts[1];
+          String typeStr = parts[1].trim().toLowerCase();
+          String malwareFilePath = parts[2];
+          TFD.ScoreType type = typeStr.equals("fc") ? TFD.ScoreType.FAM_CLASSIFIER : (typeStr.equals("tfd") ? TFD.ScoreType.TFD : null);
+          final int count = tfd.add(malwareFilePath, type);
 
-          Malware malware = Loader.loadMalware(malwareFilePath);
-          Classify classify = new Classify(dtf.getFamiliesHome(), malware);
-          classify.init();
-          classify.score();
-          classify.findResultFamily();
-          classify.showScores();
-          Family resultFamily = classify.getResultFamily();
-          System.out.println("malware belongs to family: " + resultFamily.getName());
+          final String home = tfd.getFamiliesHome().getAbsolutePath();
+          tfd = new TFD();
+          loadFamiles(home);
+          System.out.println(count + " new malware files added");
         } catch (Exception ex) {
           System.out.println("Error: " + ex.getMessage());
           showAddHelp();
@@ -140,9 +137,9 @@ public class Main {
       if (parts.length == 3 && parts[1].equals("tfd")) {
         try {
           String familyName = parts[2];
-          if (dtf != null) {
+          if (tfd != null) {
             try {
-              List<BasicBlock> bbs = dtf.topByFamily(familyName);
+              List<BasicBlock> bbs = tfd.topByFamily(familyName);
 
               int i = 1;
               for (BasicBlock bb : bbs) {
@@ -164,9 +161,9 @@ public class Main {
         try {
           int top = Integer.parseInt(parts[2]);
           String familyName = parts[3];
-          if (dtf != null) {
+          if (tfd != null) {
             try {
-              List<BasicBlock> bbs = dtf.topByFamily(familyName, top);
+              List<BasicBlock> bbs = tfd.topByFamily(familyName, top);
 
               int i = 1;
               for (BasicBlock bb : bbs) {
@@ -187,15 +184,15 @@ public class Main {
         try {
           int top = Integer.parseInt(parts[2]);
           String familyName = parts[3];
-          if (dtf != null) {
+          if (tfd != null) {
             try {
-              List<BasicBlock> bbs = dtf.topByFamily(familyName, top);
+              List<BasicBlock> bbs = tfd.topByFamily(familyName, top);
 
               int i = 1;
               for (BasicBlock bb : bbs) {
                 System.out.println(MessageFormat.format("{0}. {1}", String.valueOf(i++), bb));
 
-                List<Family> commonFamilies = dtf.findFamiliesByBB(bb.getCode());
+                List<Family> commonFamilies = tfd.findFamiliesByBB(bb.getCode());
                 int j = 0;
 
                 for (Family commonFamily : commonFamilies) {
@@ -227,7 +224,7 @@ public class Main {
       } else if (parts.length == 3 && parts[1].equals("bb")) {
         String hash = parts[2].trim();
         System.out.println("Query basic block " + hash);
-        List<TFD.FamilyBasicBlock> occurances = dtf.allOccurancesByHash(hash);
+        List<TFD.FamilyBasicBlock> occurances = tfd.allOccurancesByHash(hash);
 
         DecimalFormat df = new DecimalFormat("###,###.############");
         System.out.println(occurances.size() + " families: ");
@@ -237,10 +234,10 @@ public class Main {
                   + df.format(occurance.getBasicBlock().getDistributionTermFrequency()) + ", TFR:"
                   + df.format(occurance.getBasicBlock().getTermFrequencyRatio()) + ", Count:"
                   + occurance.getBasicBlock().getCount() + ", Malwares Count:"
-                  + dtf.countOfMalwaresInFamilyByBB(occurance.getFamily(), hash));
+                  + tfd.countOfMalwaresInFamilyByBB(occurance.getFamily(), hash));
         }
 
-        Set<Malware> malwares = dtf.findMalwaresByBBCode(hash);
+        Set<Malware> malwares = tfd.findMalwaresByBBCode(hash);
         Iterator<Malware> itM = malwares.iterator();
         System.out.println(malwares.size() + " malwares: ");
         while (itM.hasNext()) {
@@ -250,7 +247,7 @@ public class Main {
       } else if (parts.length == 3 && parts[1].equals("malware")) {
         String malwareName = parts[2].trim();
 
-        Iterator<Map.Entry<String, Family>> itF = dtf.getFamilies().entrySet().iterator();
+        Iterator<Map.Entry<String, Family>> itF = tfd.getFamilies().entrySet().iterator();
         while (itF.hasNext()) {
           Map.Entry<String, Family> nextF = itF.next();
           Family family = nextF.getValue();
@@ -273,7 +270,7 @@ public class Main {
                 System.out.println(bbM.getCode());
                 
                 DecimalFormat df = new DecimalFormat("###,###.############");
-                List<TFD.FamilyBasicBlock> occurances = dtf.allOccurancesByHash(bbM.getCode());
+                List<TFD.FamilyBasicBlock> occurances = tfd.allOccurancesByHash(bbM.getCode());
                 System.out.println("Families: ");
                 for (TFD.FamilyBasicBlock occurance : occurances) {
                   System.out.print(occurance.getFamily().getName());
@@ -281,7 +278,7 @@ public class Main {
                           + df.format(occurance.getBasicBlock().getDistributionTermFrequency()) + ", TFR:"
                           + df.format(occurance.getBasicBlock().getTermFrequencyRatio()) + ", Count:"
                           + occurance.getBasicBlock().getCount() + ", Malwares Count: "
-                          + dtf.countOfMalwaresInFamilyByBB(occurance.getFamily(), occurance.getBasicBlock().getCode()));
+                          + tfd.countOfMalwaresInFamilyByBB(occurance.getFamily(), occurance.getBasicBlock().getCode()));
                 }
 
                 System.out.println("\n ---------------------------");
@@ -338,15 +335,17 @@ public class Main {
 
   private void loadFamiles(String path) throws IOException {
     File file = new File(path);
-    dtf.setFamiliesHome(file);
-    dtf.loadFamilies();
-    dtf.calculateTermFrequencyRatio();
-    dtf.calculateDistributionTermFrequency();
+    tfd.setFamiliesHome(file);
+    tfd.loadFamilies();
+    tfd.calculateTermFrequencyRatio();
+    tfd.calculateDistributionTermFrequency();
+    //tfd.calculateMDFs();
+    //tfd.calculateFCs();
   }
 
   private void familiesCommand() {
-    if (dtf != null) {
-      HashMap<String, Family> families = dtf.getFamilies();
+    if (tfd != null) {
+      HashMap<String, Family> families = tfd.getFamilies();
       Iterator<Map.Entry<String, Family>> it = families.entrySet().iterator();
 
       while (it.hasNext()) {
@@ -367,7 +366,7 @@ public class Main {
     } else {
       String[] parts = splitCommand(command);
       if (parts.length == 2) {
-        Family family = dtf.getFamilies().get(parts[1]);
+        Family family = tfd.getFamilies().get(parts[1]);
 
         if (family != null) {
           Iterator<Map.Entry<String, BasicBlock>> it = family.getBasicBlocks().entrySet().iterator();
@@ -400,7 +399,7 @@ public class Main {
   }
 
   private void statusCommand() {
-    dtf.showStatus(false);
+    tfd.showStatus(false);
   }
 
   private boolean checkInitFile() {

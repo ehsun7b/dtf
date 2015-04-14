@@ -1,5 +1,6 @@
 package vida.phd.tfd;
 
+import com.google.common.io.Files;
 import vida.phd.tfd.entity.BasicBlock;
 import vida.phd.tfd.entity.Family;
 import vida.phd.tfd.entity.Malware;
@@ -19,9 +20,17 @@ import java.util.logging.Logger;
 
 public class TFD {
 
+  public enum ScoreType {
+    FAM_CLASSIFIER, TFD;
+  }
+
   protected File familiesHome;
   protected volatile HashMap<String, Family> families;
   protected static final int THREADS = 10;
+  protected Malware candidateMalware;
+  protected Family candidateFamily, detectedFamily;
+  private HashMap<String, Integer> scores;
+  private final String CANDIDATE_FAMILY_NAME = "__candidate_family";
 
   public TFD(File familiesHome) {
     this.familiesHome = familiesHome;
@@ -83,7 +92,7 @@ public class TFD {
   }
 
   public void calculateTermFrequencyRatio() {
-    System.out.println("Calculating term frequency ratio...");
+    //System.out.println("Calculating term frequency ratio...");
     Iterator<Map.Entry<String, Family>> iterator = families.entrySet().iterator();
     while (iterator.hasNext()) {
       Map.Entry<String, Family> pair = iterator.next();
@@ -112,7 +121,7 @@ public class TFD {
   }
 
   public void calculateDistributionTermFrequency() {
-    System.out.println("Calculating distribution term frequency...");
+    //System.out.println("Calculating distribution term frequency...");
     Iterator<Map.Entry<String, Family>> iterator = families.entrySet().iterator();
     while (iterator.hasNext()) {
       Map.Entry<String, Family> pair = iterator.next();
@@ -383,9 +392,9 @@ public class TFD {
         if (o1.getBasicBlock().getFC() > o2.getBasicBlock().getFC()) {
           return 1;
         } else if (o1.getBasicBlock().getFC() < o2.getBasicBlock().getFC()) {
-          return 0;
-        } else {
           return -1;
+        } else {
+          return 0;
         }
       }
     });
@@ -443,6 +452,173 @@ public class TFD {
     @Override
     public int compareTo(FamilyBasicBlock o) {
       return basicBlock.compareTo(o.basicBlock);
+    }
+  }
+
+  protected void calculateFCs() {
+    //System.out.println("Calculating Family Classifier...");
+    Iterator<Map.Entry<String, Family>> iterator = families.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<String, Family> pair = iterator.next();
+      Family family = pair.getValue();
+
+      HashMap<String, BasicBlock> basicBlocks = family.getBasicBlocks();
+      Iterator<Map.Entry<String, BasicBlock>> it = basicBlocks.entrySet().iterator();
+
+      while (it.hasNext()) {
+        Map.Entry<String, BasicBlock> bbPair = it.next();
+        BasicBlock basicBlock = bbPair.getValue();
+
+        double mdf = basicBlock.getMDF();
+        double tfd = basicBlock.getDistributionTermFrequency();
+        double fc = mdf * tfd;
+        //System.out.println("----- FC: " + fc);
+        basicBlock.setFC(fc);
+      }
+    }
+  }
+
+  protected void calculateMDFs() {
+    //System.out.println("Calculating MDF...");
+    Iterator<Map.Entry<String, Family>> iterator = families.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<String, Family> pair = iterator.next();
+      Family family = pair.getValue();
+
+      HashMap<String, BasicBlock> basicBlocks = family.getBasicBlocks();
+      Iterator<Map.Entry<String, BasicBlock>> it = basicBlocks.entrySet().iterator();
+
+      while (it.hasNext()) {
+        Map.Entry<String, BasicBlock> bbPair = it.next();
+        BasicBlock basicBlock = bbPair.getValue();
+
+        int malwaresCount = this.countOfMalwaresInFamilyByBB(family, basicBlock.getCode());
+        int countOfMalwares = family.getMalwares().size();
+        double mdf = (double) malwaresCount / (double) countOfMalwares;
+        //System.out.println("----- MDF: " + mdf);
+        basicBlock.setMDF(mdf);
+      }
+    }
+  }
+
+  public void score(ScoreType type) {
+    scores = new HashMap<>();
+
+    final Iterator<Map.Entry<String, BasicBlock>> itBB = candidateMalware.getBasicBlocks().entrySet().iterator();
+    while (itBB.hasNext()) {
+      final BasicBlock bb = itBB.next().getValue();
+
+      List<FamilyBasicBlock> familyBasicBlocks = null;
+
+      if (type == ScoreType.TFD) {
+        familyBasicBlocks = allOccurancesByHash(bb.getCode());
+      } else if (type == ScoreType.FAM_CLASSIFIER) {
+        familyBasicBlocks = allOccurancesByHashSortByFC(bb.getCode());
+      }
+
+      if (familyBasicBlocks != null && familyBasicBlocks.size() > 0) {
+        FamilyBasicBlock familyBasicBlock = familyBasicBlocks.get(0);
+        addScore(familyBasicBlock.getFamily().getName());
+      }
+    }
+  }
+
+  public void findResultFamily() {
+    final Iterator<String> iterator = scores.keySet().iterator();
+    Integer max = 0;
+    String famKey = null;
+
+    while (iterator.hasNext()) {
+      final String next = iterator.next();
+      final Integer score = scores.get(next);
+
+      if (score > max) {
+        max = score;
+        famKey = next;
+      }
+    }
+
+    detectedFamily = families.get(famKey);
+  }
+
+  private void addScore(String name) {
+    Integer score = scores.get(name);
+
+    if (score == null) {
+      score = 1;
+    } else {
+      score++;
+    }
+
+    scores.put(name, score);
+  }
+
+  public void showScores() {
+    Iterator<String> iterator = scores.keySet().iterator();
+    while (iterator.hasNext()) {
+      String family = iterator.next();
+      Integer score = scores.get(family);
+      System.out.println("Family: " + family + ": " + score);
+    }
+  }
+
+  public int add(String malwareFile, ScoreType type) {
+    File file = new File(malwareFile);
+    int result = 0;
+    if (file.isDirectory()) {
+      final File[] files = file.listFiles(new FileFilter() {
+        @Override
+        public boolean accept(File pathname) {
+          return pathname.getName().toLowerCase().endsWith(".txt");
+        }
+      });
+
+      for (File f: files) {
+        addCandidate(f.getAbsolutePath(), type);
+        System.out.println("--------------------------------------------------------------------");
+        result++;
+      }
+
+      return result;
+    } else if (file.isFile()) {
+      addCandidate(malwareFile, type);
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+
+  public void addCandidate(String malwareFile, ScoreType type) {
+    final long startTime = System.nanoTime();
+    candidateFamily = Loader.loadMalware(malwareFile, CANDIDATE_FAMILY_NAME);
+    candidateMalware = candidateFamily.getMalwares().entrySet().iterator().next().getValue();
+
+    System.out.println("Updating the database ...");
+    calculateTermFrequencyRatio();
+    calculateDistributionTermFrequency();
+
+    if (type == ScoreType.FAM_CLASSIFIER) {
+      calculateMDFs();
+      calculateFCs();
+    }
+
+    score(type);
+    findResultFamily();
+    final long endTime = System.nanoTime();
+    final long timeNano = endTime - startTime;
+    final Double timeSec = (double) timeNano / 1000000000.0;
+    System.out.println("Duration time: " + timeSec + " seconds");
+    showScores();
+    //System.out.println("Suggested family is: " + detectedFamily.getName());
+    String directoryName = detectedFamily.getName();
+    File sourceFile = new File(malwareFile);
+    File destinationFile = new File(this.familiesHome + "/" + directoryName + "/" + sourceFile.getName());
+    try {
+      Files.copy(sourceFile, destinationFile);
+      System.out.println(sourceFile.getName() + " was copied to: " + directoryName + " family.");
+    } catch (IOException e) {
+      e.printStackTrace();
+      System.out.println("Error in copying the file: " + sourceFile.getAbsolutePath());
     }
   }
 }

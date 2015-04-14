@@ -66,14 +66,15 @@ public class Loader implements Callable<Family> {
     return familyName;
   }
 
-  public static Malware loadMalware(String path) {
-    Malware malware = null;
+  public static Family loadMalware(String path, String familyName) {
+    Family result = new Family(familyName);
+    Malware malware;
 
     File file = new File(path);
     String malwareName = file.getName();
 
     try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-      malware = new Malware(malwareName, null);
+      malware = new Malware(malwareName, result);
 
       String code;
 
@@ -81,12 +82,15 @@ public class Loader implements Callable<Family> {
         code = code.trim();
         if (code.length() > 0) {
           malware.addBasicBlock(code);
+          result.addBasicBlock(code);
         }
       }
+
+      result.addMalware(malware);
     } catch (Exception ex) {
       Logger.getLogger(Loader.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
     }
 
-    return malware;
+    return result;
   }
 }
