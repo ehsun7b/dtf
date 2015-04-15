@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 public class TFD {
 
   public enum ScoreType {
+
     FAM_CLASSIFIER, TFD;
   }
 
@@ -562,7 +563,7 @@ public class TFD {
     }
   }
 
-  public int add(String malwareFile, ScoreType type) {
+  public int add(String malwareFile, ScoreType type, boolean showInfo) {
     File file = new File(malwareFile);
     int result = 0;
     if (file.isDirectory()) {
@@ -573,27 +574,34 @@ public class TFD {
         }
       });
 
-      for (File f: files) {
-        addCandidate(f.getAbsolutePath(), type);
+      for (File f : files) {
+        //try {
+        addCandidate(f.getAbsolutePath(), type, showInfo);
         System.out.println("--------------------------------------------------------------------");
         result++;
+        //} catch (Exception ex) {
+        //ex.printStackTrace();
+        //}
       }
 
       return result;
     } else if (file.isFile()) {
-      addCandidate(malwareFile, type);
+      addCandidate(malwareFile, type, showInfo);
       return 1;
     } else {
       return 0;
     }
   }
 
-  public void addCandidate(String malwareFile, ScoreType type) {
+  public void addCandidate(String malwareFile, ScoreType type, boolean showInfo) {
     final long startTime = System.nanoTime();
+    detectedFamily = null;
     candidateFamily = Loader.loadMalware(malwareFile, CANDIDATE_FAMILY_NAME);
     candidateMalware = candidateFamily.getMalwares().entrySet().iterator().next().getValue();
 
-    System.out.println("Updating the database ...");
+    if (showInfo) {
+      System.out.println("Updating the database ...");
+    }
     calculateTermFrequencyRatio();
     calculateDistributionTermFrequency();
 
@@ -604,21 +612,29 @@ public class TFD {
 
     score(type);
     findResultFamily();
-    final long endTime = System.nanoTime();
-    final long timeNano = endTime - startTime;
-    final Double timeSec = (double) timeNano / 1000000000.0;
-    System.out.println("Duration time: " + timeSec + " seconds");
-    showScores();
+    if (showInfo) {
+      final long endTime = System.nanoTime();
+      final long timeNano = endTime - startTime;
+      final Double timeSec = (double) timeNano / 1000000000.0;
+      System.out.println("Duration time: " + timeSec + " seconds");
+      showScores();
+    }
     //System.out.println("Suggested family is: " + detectedFamily.getName());
-    String directoryName = detectedFamily.getName();
-    File sourceFile = new File(malwareFile);
-    File destinationFile = new File(this.familiesHome + "/" + directoryName + "/" + sourceFile.getName());
-    try {
-      Files.copy(sourceFile, destinationFile);
-      System.out.println(sourceFile.getName() + " was copied to: " + directoryName + " family.");
-    } catch (IOException e) {
-      e.printStackTrace();
-      System.out.println("Error in copying the file: " + sourceFile.getAbsolutePath());
+    if (detectedFamily == null) {
+      System.out.print("Malware can not be classified: ");
+      System.out.println(malwareFile);
+      System.out.println("");
+    } else {
+      String directoryName = detectedFamily.getName();
+      File sourceFile = new File(malwareFile);
+      File destinationFile = new File(this.familiesHome + "/" + directoryName + "/" + sourceFile.getName());
+      try {
+        Files.copy(sourceFile, destinationFile);
+        System.out.println(sourceFile.getName() + " was copied to: " + directoryName + " family.");
+      } catch (IOException e) {
+        e.printStackTrace();
+        System.out.println("Error in copying the file: " + sourceFile.getAbsolutePath());
+      }
     }
   }
 }

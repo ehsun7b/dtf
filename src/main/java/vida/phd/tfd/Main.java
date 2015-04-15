@@ -19,7 +19,7 @@ import java.util.logging.Logger;
 
 public class Main {
 
-  private static final String version = "3.2.0";
+  private static final String version = "3.3.0";
   private CommandLine getter;
   private boolean running;
   private TFD tfd;
@@ -68,7 +68,7 @@ public class Main {
               familyCommand(command);
             } else if (command.startsWith("load")) {
               loadCommand(command);
-            } else if (command.startsWith("add")) {
+            } else if (command.startsWith("classify")) {
               addCommand(command);
             } else {
               System.out.println("Unknown Command!");
@@ -84,16 +84,17 @@ public class Main {
   }
 
   private void addCommand(String command) {
-    if (command.equals("add")) {
+    if (command.equals("classify")) {
       showAddHelp();
     } else {
       String[] parts = splitCommand(command);
-      if (parts.length == 3) {
+      if (parts.length == 3 || (parts.length == 4 && parts[3].equals("scoring"))) {
+        boolean showInfo = parts.length == 4 && parts[3].equals("scoring");
         try {
           String typeStr = parts[1].trim().toLowerCase();
           String malwareFilePath = parts[2];
           TFD.ScoreType type = typeStr.equals("fc") ? TFD.ScoreType.FAM_CLASSIFIER : (typeStr.equals("tfd") ? TFD.ScoreType.TFD : null);
-          final int count = tfd.add(malwareFilePath, type);
+          final int count = tfd.add(malwareFilePath, type, showInfo);
 
           final String home = tfd.getFamiliesHome().getAbsolutePath();
           tfd = new TFD();
@@ -108,7 +109,8 @@ public class Main {
   }
 
   private void showAddHelp() {
-    System.out.println("add help");
+    System.out.println("classify command:");
+    System.out.println("classify tfd/fc path [scoring]");
   }
 
   private void showVersion() {
