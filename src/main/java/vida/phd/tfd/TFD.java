@@ -18,30 +18,80 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * TFD class. Main class of the program
+ * @author ehsun7b
+ */
 public class TFD {
 
+  /**
+   * Scoring type for classifying algo
+   */
   public enum ScoreType {
-
     FAM_CLASSIFIER, TFD;
   }
 
+  /**
+   * The directory from which all families get loaded
+   */
   protected File familiesHome;
+  
+  /**
+   * HashMap to keep all families
+   */
   protected volatile HashMap<String, Family> families;
+  
+  /**
+   * Number of threads for initial loading of the families concurrently
+   */
   protected static final int THREADS = 10;
+  
+  /**
+   * The new malware which is about to be classified
+   */
   protected Malware candidateMalware;
-  protected Family candidateFamily, detectedFamily;
+  
+  /**
+   * Temporary family that a new malware will be assigned to before classification happens
+   */
+  protected Family candidateFamily;
+  
+  /**
+   * The successfully detected family for the new malware after classification happens
+   */
+  protected Family detectedFamily;
+  
+  /**
+   * HashMap to keep all families scores for the new malware
+   */
   private HashMap<String, Integer> scores;
+  
+  /**
+   * Arbitrary name for the temporary family
+   * @see candidateFamily
+   */
   private final String CANDIDATE_FAMILY_NAME = "__candidate_family";
 
+  /**
+   * Constructor which takes a Directory as the familiesHome
+   * @param familiesHome 
+   */
   public TFD(File familiesHome) {
     this.familiesHome = familiesHome;
     families = new HashMap<>();
   }
 
+  /**
+   * Default constructor
+   */
   public TFD() {
     families = new HashMap<>();
   }
 
+  /**
+   * Load all families from the familiesHome
+   * @throws IOException 
+   */
   public void loadFamilies() throws IOException {
     int countOfBB = 0;
     int countOfMalwares = 0;
@@ -92,6 +142,9 @@ public class TFD {
     showStatus(false);
   }
 
+  /**
+   * Calculates TermFrequencyRatio for all BasicBlocks of all Malware
+   */
   public void calculateTermFrequencyRatio() {
     //System.out.println("Calculating term frequency ratio...");
     Iterator<Map.Entry<String, Family>> iterator = families.entrySet().iterator();
@@ -121,6 +174,9 @@ public class TFD {
     }
   }
 
+  /**
+   * Calculates DistributedTermFrequency of all BasicBlocks in all Malware
+   */
   public void calculateDistributionTermFrequency() {
     //System.out.println("Calculating distribution term frequency...");
     Iterator<Map.Entry<String, Family>> iterator = families.entrySet().iterator();
@@ -137,11 +193,6 @@ public class TFD {
 
         double termFrequencyRatio = basicBlock.getTermFrequencyRatio();
         double sumOfTermFrequencyRatio = sumOfTermFrequencyRatio(basicBlock.getCode(), family);
-
-        /*
-         if (sumOfTermFrequencyRatio == 0) {
-         int gg = 10;
-         }*/
         double distributionTermFrequency = termFrequencyRatio - sumOfTermFrequencyRatio;
 
         basicBlock.setDistributionTermFrequency(distributionTermFrequency);
@@ -149,6 +200,11 @@ public class TFD {
     }
   }
 
+  /**
+   * Find all families which has the given BasicBlock (code)
+   * @param code
+   * @return 
+   */
   public List<Family> findFamiliesByBB(String code) {
     List<Family> result = new ArrayList<>();
 
@@ -164,6 +220,13 @@ public class TFD {
     return result;
   }
 
+  /**
+   * Find the top BasicBlocks in the given family. 
+   * @param familyName
+   * @param count
+   * @return
+   * @throws Exception 
+   */
   public List<BasicBlock> topByFamily(String familyName, int count) throws Exception {
     List<BasicBlock> result = new ArrayList<>(count);
 
@@ -184,6 +247,12 @@ public class TFD {
     return result;
   }
 
+  /**
+   * Sum of the TermFrequencyRatio of all families excluding the given family.
+   * @param bbcode
+   * @param exclude
+   * @return 
+   */
   protected double sumOfTermFrequencyRatio(String bbcode, Family exclude) {
     double result = 0;
     List<Family> famList = findFamiliesByBB(bbcode);
@@ -198,6 +267,11 @@ public class TFD {
     return result;
   }
 
+  /**
+   * Sort the given HashMap of BasicBlocks based on TFD
+   * @param map
+   * @return 
+   */
   public static List<BasicBlock> sortByValue(Map<String, BasicBlock> map) {
     List<BasicBlock> list = new LinkedList<>();
 
@@ -212,63 +286,36 @@ public class TFD {
     return list;
   }
 
-  /*
-   private void removeDuplications(Family family) {
-   HashMap<String, Malware> malwares = family.getMalwares();
-    
-   Iterator<Map.Entry<String, Malware>> it = malwares.entrySet().iterator();
-   while (it.hasNext()) {
-   Malware malware = it.next().getValue();
-   if (malwareExists(malware, family)) {
-   it.remove();
-   removeBasicBlocks(family, malware);
-   }
-   }
-   }*/
-
-  /*
-   private boolean malwareExists(Malware malware, Family exclude) {
-   boolean result = false;
-
-   Collection<Family> values = families.values();
-   for (Family family : values) {
-   if (!family.equals(exclude)) {
-   Malware found = family.getMalwares().get(malware);
-   if (found != null) {
-   result = true;
-   break;
-   }
-   }
-   }
-
-   return result;
-   }*/
-
-  /*
-   private void removeBasicBlocks(Family family, Malware malware) {    
-   Iterator<Map.Entry<String, BasicBlock>> it = family.getBasicBlocks().entrySet().iterator();
-   while (it.hasNext()) {
-   Map.Entry<String, BasicBlock> next = it.next();
-   BasicBlock bb = next.getValue();
-   if (bb.getMalwares().contains(malware)) {
-   System.out.println("removed: " + bb.toString());
-   it.remove();
-   }
-   }
-   }*/
+  /**
+   * 
+   * @return familiesHome
+   */
   public File getFamiliesHome() {
     return familiesHome;
   }
 
+  /**
+   * 
+   * @param familiesHome 
+   */
   public void setFamiliesHome(File familiesHome) {
     this.familiesHome = familiesHome;
   }
 
+  /**
+   * 
+   * @return families
+   */
   public HashMap<String, Family> getFamilies() {
     return families;
   }
 
-  BasicBlock getBasicBlockByCode(String code) {
+  /**
+   * Find the given BasicBlock in all families
+   * @param code
+   * @return 
+   */
+  public BasicBlock getBasicBlockByCode(String code) {
     BasicBlock result = null;
     Iterator<Map.Entry<String, Family>> it = families.entrySet().iterator();
 
@@ -284,6 +331,10 @@ public class TFD {
     return result;
   }
 
+  /**
+   * Prints the current status of the in memory DB. Including count of Families, Malware and BasicBlocks
+   * @param details 
+   */
   public void showStatus(boolean details) {
     int countOfBBs = 0;
     int countOfMalwares = 0;
@@ -314,6 +365,11 @@ public class TFD {
     System.out.println("");
   }
 
+  /**
+   * Find all malware which contain the given BasicBlock
+   * @param code
+   * @return 
+   */
   public Set<Malware> findMalwaresByBBCode(final String code) {
     Set<Malware> malwares = new HashSet<>();
 
@@ -337,6 +393,12 @@ public class TFD {
     return malwares;
   }
 
+  /**
+   * Top BasicBlock (based on TFD) in the given Family.
+   * @param familyName
+   * @return
+   * @throws Exception 
+   */
   public List<BasicBlock> topByFamily(String familyName) throws Exception {
     List<BasicBlock> result = new ArrayList<>();
 
@@ -357,7 +419,12 @@ public class TFD {
     return result;
   }
 
-  public List<FamilyBasicBlock> allOccurancesByHash(String code) {
+  /**
+   * Find all FamilyBasicBlock occurrences by the given BasicBlock sorted by TermFrequencyDistribution
+   * @param code
+   * @return 
+   */
+  public List<FamilyBasicBlock> allOccurencesByHash(String code) {
     List<FamilyBasicBlock> result = new ArrayList<>();
 
     List<Family> families = findFamiliesByBB(code);
@@ -375,6 +442,11 @@ public class TFD {
     return result;
   }
 
+  /**
+   * Find all FamilyBasicBlock occurrences by the given BasicBlock sorted by FamilyClassifier
+   * @param code
+   * @return 
+   */
   public List<FamilyBasicBlock> allOccurancesByHashSortByFC(String code) {
     List<FamilyBasicBlock> result = new ArrayList<>();
 
@@ -405,6 +477,12 @@ public class TFD {
     return result;
   }
 
+  /**
+   * Gets count of all malware in the given family which contain the given BasicBlock
+   * @param family
+   * @param code
+   * @return 
+   */
   public int countOfMalwaresInFamilyByBB(Family family, String code) {
     Iterator<Map.Entry<String, Malware>> it = family.getMalwares().entrySet().iterator();
     int result = 0;
@@ -424,38 +502,77 @@ public class TFD {
     return result;
   }
 
+  /**
+   * FamilyBasicBlock class for detecting occurrences
+   */
   public class FamilyBasicBlock implements Comparable<FamilyBasicBlock> {
 
+    /**
+     * Family
+     */
     private Family family;
+    
+    /**
+     * BasicBlock
+     */
     private BasicBlock basicBlock;
 
+    /**
+     * Constructor which takes Family and BasicBlock as its parameters
+     * @param family
+     * @param bb 
+     */
     private FamilyBasicBlock(Family family, BasicBlock bb) {
       this.family = family;
       this.basicBlock = bb;
     }
 
+    /**
+     * 
+     * @return family
+     */
     public Family getFamily() {
       return family;
     }
 
+    /**
+     * 
+     * @param family 
+     */
     public void setFamily(Family family) {
       this.family = family;
     }
 
+    /**
+     * 
+     * @return basicBlock
+     */
     public BasicBlock getBasicBlock() {
       return basicBlock;
     }
 
+    /**
+     * 
+     * @param basicBlock 
+     */
     public void setBasicBlock(BasicBlock basicBlock) {
       this.basicBlock = basicBlock;
     }
 
+    /**
+     * Compares the FamilyBasicBlock with the given FamilyBasicBlock based on their BasicBlocks
+     * @param o
+     * @return 
+     */
     @Override
     public int compareTo(FamilyBasicBlock o) {
       return basicBlock.compareTo(o.basicBlock);
     }
   }
 
+  /**
+   * Calculates the FamilyClassifier
+   */
   protected void calculateFCs() {
     //System.out.println("Calculating Family Classifier...");
     Iterator<Map.Entry<String, Family>> iterator = families.entrySet().iterator();
@@ -479,6 +596,9 @@ public class TFD {
     }
   }
 
+  /**
+   * Calculates malware distribution frequency
+   */
   protected void calculateMDFs() {
     //System.out.println("Calculating MDF...");
     Iterator<Map.Entry<String, Family>> iterator = families.entrySet().iterator();
@@ -502,6 +622,10 @@ public class TFD {
     }
   }
 
+  /**
+   * Scores all families for the new malware based on the ScoreType parameter
+   * @param type 
+   */
   public void score(ScoreType type) {
     scores = new HashMap<>();
 
@@ -512,7 +636,7 @@ public class TFD {
       List<FamilyBasicBlock> familyBasicBlocks = null;
 
       if (type == ScoreType.TFD) {
-        familyBasicBlocks = allOccurancesByHash(bb.getCode());
+        familyBasicBlocks = allOccurencesByHash(bb.getCode());
       } else if (type == ScoreType.FAM_CLASSIFIER) {
         familyBasicBlocks = allOccurancesByHashSortByFC(bb.getCode());
       }
@@ -524,6 +648,9 @@ public class TFD {
     }
   }
 
+  /**
+   * Based on the scores of families, finds the best matching family
+   */
   public void findResultFamily() {
     final Iterator<String> iterator = scores.keySet().iterator();
     Integer max = 0;
@@ -542,6 +669,10 @@ public class TFD {
     detectedFamily = families.get(famKey);
   }
 
+  /**
+   * Adds the score of the given family to the scores HashMap
+   * @param name 
+   */
   private void addScore(String name) {
     Integer score = scores.get(name);
 
@@ -554,6 +685,9 @@ public class TFD {
     scores.put(name, score);
   }
 
+  /**
+   * Prints the families' scores
+   */
   public void showScores() {
     Iterator<String> iterator = scores.keySet().iterator();
     while (iterator.hasNext()) {
@@ -563,6 +697,13 @@ public class TFD {
     }
   }
 
+  /**
+   * Adds the given malware file to the in memory DB based on the ScoringType parameter
+   * @param malwareFile
+   * @param type
+   * @param showInfo
+   * @return 
+   */
   public int add(String malwareFile, ScoreType type, boolean showInfo) {
     File file = new File(malwareFile);
     int result = 0;
@@ -593,6 +734,12 @@ public class TFD {
     }
   }
 
+  /**
+   * Adds a file or all files of a directory to the in memory DB
+   * @param malwareFile
+   * @param type
+   * @param showInfo 
+   */
   public void addCandidate(String malwareFile, ScoreType type, boolean showInfo) {
     final long startTime = System.nanoTime();
     detectedFamily = null;

@@ -8,17 +8,42 @@ import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * This class is used to load a family. It will load all *.txt files from the given directory.
+ * @author Vida
+ */
 public class Loader implements Callable<Family> {
 
+  /**
+   * Directory which contains all *.txt files
+   */
   private final File directory;
+  
+  /**
+   * Family name
+   */
   private final String familyName;
+  
+  /**
+   * Array of all *.txt files
+   */
   private File[] files;
 
+  /**
+   * Constructor of the class which takes two parameters.
+   * @param directory which contains all malware files.
+   * @param familyName 
+   */
   public Loader(File directory, String familyName) {
     this.directory = directory;
     this.familyName = familyName;
   }
 
+  /**
+   * Overridden call method which contains the main logic of family loading.
+   * @return loaded family
+   * @throws Exception 
+   */
   @Override
   public Family call() throws Exception {
     Family family = new Family(familyName);
@@ -58,14 +83,28 @@ public class Loader implements Callable<Family> {
     return family;
   }
 
+  /**
+   * 
+   * @return directory
+   */
   public File getDirectory() {
     return directory;
   }
 
+  /**
+   * 
+   * @return familyName
+   */
   public String getFamilyName() {
     return familyName;
   }
 
+  /**
+   * Utility method to load a family from the given path.
+   * @param path in which the malware files located
+   * @param familyName family name
+   * @return Family
+   */
   public static Family loadMalware(String path, String familyName) {
     Family result = new Family(familyName);
     Malware malware;

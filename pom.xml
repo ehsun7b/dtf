@@ -34,7 +34,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.1</version>
         <configuration>
-          <mainClass>vida.phd.yas.Yas</mainClass>
+          <mainClass>vida.phd.tfd.Main</mainClass>
         </configuration>
       </plugin>
       <plugin>
@@ -50,7 +50,7 @@
             <configuration>
               <transformers>
                 <transformer
-                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>vida.phd.tfd.Main</mainClass>
                 </transformer>
               </transformers>
@@ -59,6 +59,13 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <additionalparam>-Xdoclint:none</additionalparam>
+        </configuration>
       </plugin>
     </plugins>
   </build>

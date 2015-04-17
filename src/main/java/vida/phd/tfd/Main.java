@@ -17,14 +17,40 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Main class. The program entry point.
+ * @author Vida
+ */
 public class Main {
 
+  /**
+   * Program version
+   */
   private static final String version = "3.3.0";
+  
+  /**
+   * CommandLine object to receives the user inputs
+   */
   private CommandLine getter;
+  
+  /**
+   * CommandLine gets user inputs until this is true
+   */
   private boolean running;
+  
+  /**
+   * TDF object
+   */
   private TFD tfd;
+  
+  /**
+   * initial load may be set in a file called init in the same directory as the program JAR file is located.
+   */
   private File initFile;
 
+  /**
+   * Runs the program
+   */
   private void run() {
     showVersion();
     running = true;
@@ -83,6 +109,10 @@ public class Main {
     }
   }
 
+  /**
+   * Classify command
+   * @param command 
+   */
   private void addCommand(String command) {
     if (command.equals("classify")) {
       showAddHelp();
@@ -108,21 +138,34 @@ public class Main {
     }
   }
 
+  /**
+   * Classify help
+   */
   private void showAddHelp() {
     System.out.println("classify command:");
     System.out.println("classify tfd/fc path [scoring]");
   }
 
+  /**
+   * Prints program version
+   */
   private void showVersion() {
     System.out.println("TFD ".concat(version).concat("\n"));
   }
 
+  /**
+   * Time command; prints time
+   * @param command 
+   */
   private void timeCommand(String command) {
     Calendar calendar = new GregorianCalendar();
     DateFormat format = DateFormat.getInstance();
     System.out.println(format.format(calendar.getTime()));
   }
 
+  /**
+   * Main help which prints available commands
+   */
   private void showHelp() {
     System.out.println("Available commands:");
     System.out.println("query");
@@ -131,6 +174,10 @@ public class Main {
     System.out.println("load");
   }
 
+  /**
+   * Query command
+   * @param command 
+   */
   private void queryCommand(String command) {
     if (command.equals("query")) {
       showQueryHelp();
@@ -226,7 +273,7 @@ public class Main {
       } else if (parts.length == 3 && parts[1].equals("bb")) {
         String hash = parts[2].trim();
         System.out.println("Query basic block " + hash);
-        List<TFD.FamilyBasicBlock> occurances = tfd.allOccurancesByHash(hash);
+        List<TFD.FamilyBasicBlock> occurances = tfd.allOccurencesByHash(hash);
 
         DecimalFormat df = new DecimalFormat("###,###.############");
         System.out.println(occurances.size() + " families: ");
@@ -272,7 +319,7 @@ public class Main {
                 System.out.println(bbM.getCode());
                 
                 DecimalFormat df = new DecimalFormat("###,###.############");
-                List<TFD.FamilyBasicBlock> occurances = tfd.allOccurancesByHash(bbM.getCode());
+                List<TFD.FamilyBasicBlock> occurances = tfd.allOccurencesByHash(bbM.getCode());
                 System.out.println("Families: ");
                 for (TFD.FamilyBasicBlock occurance : occurances) {
                   System.out.print(occurance.getFamily().getName());
@@ -301,10 +348,18 @@ public class Main {
     }
   }
 
+  /**
+   * Splits the given command by spaces
+   * @param command
+   * @return 
+   */
   private String[] splitCommand(String command) {
     return command.split("\\s+");
   }
 
+  /**
+   * Query help
+   */
   private void showQueryHelp() {
     System.out.println("Query command is not valid!");
     System.out.println("e.g.");
@@ -315,6 +370,9 @@ public class Main {
     System.out.println("query malware c9c6f8f844c82a45624dfedc6e76144e.txt");
   }
 
+  /**
+   * Load help
+   */
   private void showLoadHelp() {
     System.out.println("Load command is not valid!");
     System.out.println("e.g.");
@@ -322,6 +380,11 @@ public class Main {
     System.out.println("load /home/user/families");
   }
 
+  /**
+   * Load command
+   * @param command
+   * @throws IOException 
+   */
   private void loadCommand(String command) throws IOException {
     if (command.equals("load")) {
       showLoadHelp();
@@ -335,6 +398,11 @@ public class Main {
     }
   }
 
+  /**
+   * Loads all families from the given path
+   * @param path
+   * @throws IOException 
+   */
   private void loadFamiles(String path) throws IOException {
     File file = new File(path);
     tfd.setFamiliesHome(file);
@@ -345,6 +413,9 @@ public class Main {
     //tfd.calculateFCs();
   }
 
+  /**
+   * Families command. Prints all families
+   */
   private void familiesCommand() {
     if (tfd != null) {
       HashMap<String, Family> families = tfd.getFamilies();
@@ -362,6 +433,10 @@ public class Main {
     }
   }
 
+  /**
+   * Family command. Shows the family
+   * @param command 
+   */
   private void familyCommand(String command) {
     if (command.equals("family")) {
       showFamilyHelp();
@@ -389,21 +464,35 @@ public class Main {
     }
   }
 
+  /**
+   * Family help
+   */
   private void showFamilyHelp() {
     System.out.println("Family command is not valid!");
     System.out.println("e.g.");
     System.out.println("family Agent");
   }
 
+  /**
+   * Main method of the program. Program's entry point
+   * @param args 
+   */
   public static void main(String[] args) {
     Main main = new Main();
     main.run();
   }
 
+  /**
+   * Status command. Prints the in memory DB status
+   */
   private void statusCommand() {
     tfd.showStatus(false);
   }
 
+  /**
+   * Checks if there is any init file or not.
+   * @return 
+   */
   private boolean checkInitFile() {
     try {
       String path = getJarFilePath();
@@ -417,6 +506,10 @@ public class Main {
     return false;
   }
 
+  /**
+   * Check if the init file has any init load
+   * @return 
+   */
   private String checkInitLoad() {
     Properties initProperties = new Properties();
     try {
@@ -432,12 +525,21 @@ public class Main {
     return null;
   }
 
+  /**
+   * Returns the path of the program JAR file
+   * @return
+   * @throws URISyntaxException 
+   */
   private String getJarFilePath() throws URISyntaxException {
     String jarFilePath = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getAbsolutePath();
      jarFilePath = jarFilePath.substring(0, jarFilePath.lastIndexOf(getFileSeparator()) + 1);
      return jarFilePath.replaceAll("%20", "\\ ");
   }
   
+  /**
+   * Returns the system default file separator
+   * @return 
+   */
   public static String getFileSeparator() {
     Properties sysProperties = System.getProperties();
     String fileSeparator = sysProperties.getProperty("file.separator");

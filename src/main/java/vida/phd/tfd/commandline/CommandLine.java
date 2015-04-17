@@ -63,9 +63,9 @@ public class CommandLine {
      * Reads one or more commands until the user enters a Separator following by the ENTER key
      *
      * @return List of String as the commands which have been entered by user
-     * @throws IOException
+     * @throws IOException while reading from OutputStream
      */
-    public List<String> read() throws IOException {
+    public List<String> read() throws IOException  {
         List<String> result = new ArrayList<String>();
         boolean finished = false;
         while (!finished) {
